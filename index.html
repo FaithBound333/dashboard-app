@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="bg"></div>
+
+  <div class="app">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">D</div>
+        <div class="brand-text">
+          <div class="brand-title">Dashboard</div>
+          <div class="brand-subtitle">Your links hub</div>
+        </div>
+      </div>
+
+      <div class="side-group">
+        <button class="group-header" type="button">
+          <span>MAIN</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="group-body">
+          <button class="nav-item active" data-page="dashboard" type="button">🏠 <span class="label">Dashboard</span></button>
+          <button class="nav-item" data-page="categories" type="button">🗂️ <span class="label">Categories</span></button>
+        </div>
+      </div>
+
+      <div class="side-group">
+        <button class="group-header" type="button">
+          <span>SYSTEM</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="group-body">
+          <button class="nav-item" data-page="settings" type="button">⚙️ <span class="label">Settings</span></button>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <button id="themeToggle" class="theme-btn" type="button" title="Toggle theme">
+          <span id="themeIcon">🌙</span>
+          <span id="themeText" class="label">Dark</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+      <header class="topbar">
+        <div class="page-title" id="pageTitle">Dashboard</div>
+
+        <!-- Only shown on dashboard -->
+        <div class="top-actions" id="dashboardTools">
+          <div class="search">
+            <span class="search-icon">⌕</span>
+            <input id="searchInput" type="text" placeholder="Search links..." autocomplete="off" />
+          </div>
+        </div>
+      </header>
+
+      <section class="pages">
+        <!-- DASHBOARD -->
+        <section class="page show" id="page-dashboard">
+          <p class="subtitle">Quick links</p>
+          <div class="grid" id="linkGrid"></div>
+          <p class="hint">Tip: use the search box to filter cards instantly.</p>
+        </section>
+
+        <!-- CATEGORIES PAGE (THIS IS THE NEW PAGE YOU ASKED FOR) -->
+        <section class="page" id="page-categories">
+          <div class="row">
+            <p class="subtitle">Categories</p>
+            <button id="addCategoryBtn" class="btn" type="button">➕ Add Category</button>
+          </div>
+
+          <div class="row">
+            <input id="newLinkName" class="input" placeholder="Link name (optional helper)" />
+            <input id="newLinkUrl" class="input" placeholder="URL (optional helper)" />
+            <span class="tiny">Tip: You can add links using “+ Link” inside each category.</span>
+          </div>
+
+          <div class="accordion" id="categoriesWrap"></div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section class="page" id="page-settings">
+          <p class="subtitle">Settings</p>
+          <div class="panel">
+            <div class="panel-title">Theme</div>
+            <div class="panel-text">Theme is saved automatically.</div>
+
+            <div class="panel-title">Data</div>
+            <div class="panel-text">Categories + links are saved in your browser (localStorage).</div>
+
+            <button id="resetDataBtn" class="btn danger" type="button">Reset saved data</button>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
