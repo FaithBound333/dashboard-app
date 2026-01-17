@@ -3,11 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Dashboard</title>
+  <title>Dashboard</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="bg"></div>
+
+  <!-- LOCK OVERLAY -->
+  <div id="lockOverlay" class="overlay hidden" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-title">🔒 Locked</div>
+      <div class="modal-sub">Enter your password to unlock.</div>
+
+      <input id="unlockPassword" class="input w-full" type="password" placeholder="Password" />
+      <button id="unlockBtn" class="btn primary w-full" type="button">Unlock</button>
+
+      <div id="unlockError" class="error hidden">Wrong password.</div>
+      <div class="tiny">Note: this is basic privacy (client-side), not strong security.</div>
+    </div>
+  </div>
 
   <div class="app">
     <!-- SIDEBAR -->
@@ -20,7 +34,7 @@
         </div>
       </div>
 
-      <div class="side-group">
+      <div class="side-group" data-group="main">
         <button class="group-header" type="button">
           <span>MAIN</span>
           <span class="chev">▾</span>
@@ -31,7 +45,18 @@
         </div>
       </div>
 
-      <div class="side-group">
+      <!-- NEW: DOWNLOADS SECTION -->
+      <div class="side-group" data-group="downloads">
+        <button class="group-header" type="button">
+          <span>DOWNLOADS</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="group-body">
+          <button class="nav-item" data-page="downloads" type="button">⬇️ <span class="label">Downloads</span></button>
+        </div>
+      </div>
+
+      <div class="side-group" data-group="system">
         <button class="group-header" type="button">
           <span>SYSTEM</span>
           <span class="chev">▾</span>
@@ -54,7 +79,7 @@
       <header class="topbar">
         <div class="page-title" id="pageTitle">Dashboard</div>
 
-        <!-- Only shown on dashboard -->
+        <!-- Only visible on Dashboard -->
         <div class="top-actions" id="dashboardTools">
           <div class="search">
             <span class="search-icon">⌕</span>
@@ -66,38 +91,87 @@
       <section class="pages">
         <!-- DASHBOARD -->
         <section class="page show" id="page-dashboard">
-          <p class="subtitle">Quick links</p>
-          <div class="grid" id="linkGrid"></div>
-          <p class="hint">Tip: use the search box to filter cards instantly.</p>
+          <div id="favSection" class="section hidden">
+            <div class="section-title">⭐ Favourites</div>
+            <div class="grid" id="favGrid"></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">All links</div>
+            <div class="grid" id="linkGrid"></div>
+          </div>
+
+          <p class="hint">Tip: use search to filter. Click ⭐ to pin. Order links in Categories with drag & drop.</p>
         </section>
 
-        <!-- CATEGORIES PAGE (THIS IS THE NEW PAGE YOU ASKED FOR) -->
+        <!-- CATEGORIES -->
         <section class="page" id="page-categories">
           <div class="row">
-            <p class="subtitle">Categories</p>
-            <button id="addCategoryBtn" class="btn" type="button">➕ Add Category</button>
+            <div class="subtitle">Categories</div>
+            <div class="row-actions">
+              <button id="addCategoryBtn" class="btn" type="button">➕ Add Category</button>
+              <button id="expandAllBtn" class="btn" type="button">Expand all</button>
+              <button id="collapseAllBtn" class="btn" type="button">Collapse all</button>
+            </div>
           </div>
 
           <div class="row">
-            <input id="newLinkName" class="input" placeholder="Link name (optional helper)" />
-            <input id="newLinkUrl" class="input" placeholder="URL (optional helper)" />
-            <span class="tiny">Tip: You can add links using “+ Link” inside each category.</span>
+            <input id="quickName" class="input" placeholder="Quick add: name" />
+            <input id="quickUrl" class="input" placeholder="Quick add: https://..." />
+            <span class="tiny">Use “+ Link” inside a category to add properly.</span>
           </div>
 
           <div class="accordion" id="categoriesWrap"></div>
         </section>
 
+        <!-- NEW: DOWNLOADS PAGE -->
+        <section class="page" id="page-downloads">
+          <div class="subtitle">Downloads</div>
+
+          <div class="section">
+            <div class="section-title">🎮 Game launchers</div>
+            <div class="grid" id="downloadsLaunchersGrid"></div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">🛡️ VPN downloads</div>
+            <div class="grid" id="downloadsVpnsGrid"></div>
+            <p class="hint">Use official sites only. Some VPNs require an account or paid plan.</p>
+          </div>
+        </section>
+
         <!-- SETTINGS -->
         <section class="page" id="page-settings">
-          <p class="subtitle">Settings</p>
+          <div class="subtitle">Settings</div>
+
           <div class="panel">
-            <div class="panel-title">Theme</div>
-            <div class="panel-text">Theme is saved automatically.</div>
-
             <div class="panel-title">Data</div>
-            <div class="panel-text">Categories + links are saved in your browser (localStorage).</div>
+            <div class="panel-text">Export your links as a file or import them back later.</div>
 
-            <button id="resetDataBtn" class="btn danger" type="button">Reset saved data</button>
+            <div class="row">
+              <button id="exportBtn" class="btn primary" type="button">Export JSON</button>
+              <button id="importBtn" class="btn" type="button">Import JSON</button>
+              <input id="importFile" type="file" accept="application/json" class="hidden" />
+              <button id="resetDataBtn" class="btn danger" type="button">Reset to defaults</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Security</div>
+            <div class="panel-text">Basic lock screen (client-side). Good for privacy, not strong security.</div>
+
+            <div class="row">
+              <button id="setPasswordBtn" class="btn" type="button">Set / Change password</button>
+              <button id="removePasswordBtn" class="btn" type="button">Remove password</button>
+              <button id="lockNowBtn" class="btn danger" type="button">Lock now</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">About</div>
+            <div class="panel-text">
+              Theme, categories, favourites, order, and your data are saved in your browser.
+            </div>
           </div>
         </section>
       </section>
