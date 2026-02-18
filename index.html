@@ -2,95 +2,198 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
   <title>Dashboard</title>
+
+  <meta name="theme-color" content="#4f46e5" id="themeColorMeta" />
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="bg"></div>
+  <a href="#pageTitle" class="skip-link">Skip to main content</a>
+  <div class="bg" aria-hidden="true"></div>
 
   <!-- LOCK OVERLAY -->
   <div id="lockOverlay" class="overlay hidden" aria-hidden="true">
-    <div class="modal">
-      <div class="modal-title">🔒 Locked</div>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lockTitle">
+      <div id="lockTitle" class="modal-title">🔒 Locked</div>
       <div class="modal-sub">Enter your password to unlock.</div>
 
-      <input id="unlockPassword" class="input w-full" type="password" placeholder="Password" />
-      <button id="unlockBtn" class="btn primary w-full" type="button">Unlock</button>
+      <label class="sr-only" for="unlockPassword">Password</label>
+      <input
+        id="unlockPassword"
+        class="input w-full"
+        type="password"
+        placeholder="Password"
+        autocomplete="off"
+      />
+      <button id="unlockBtn" class="btn primary w-full" type="button">
+        Unlock
+      </button>
 
-      <div id="unlockError" class="error hidden">Wrong password.</div>
-      <div class="tiny">Note: this is basic privacy (client-side), not strong security.</div>
+      <div id="unlockError" class="error hidden" role="alert">
+        Wrong password.
+      </div>
+      <div class="tiny">
+        Note: this is basic privacy (client-side), not strong security.
+      </div>
     </div>
   </div>
 
+  <!-- GENERIC APP MODAL (for add/edit/confirm/command palette) -->
+  <div id="appModal" class="overlay hidden" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+      <div id="appModalTitle" class="modal-title"></div>
+      <div id="appModalBody" class="modal-sub"></div>
+
+      <div id="appModalInputs"></div>
+
+      <div class="row row-actions modal-actions">
+        <button id="appModalCancel" class="btn" type="button">Cancel</button>
+        <button id="appModalOk" class="btn primary" type="button">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
+
   <div class="app">
     <!-- SIDEBAR -->
-    <aside class="sidebar">
+    <aside class="sidebar" aria-label="Main navigation">
       <div class="brand">
-        <div class="logo">D</div>
+        <div class="logo" aria-hidden="true">D</div>
         <div class="brand-text">
           <div class="brand-title">Dashboard</div>
           <div class="brand-subtitle">Your links hub</div>
         </div>
       </div>
 
-      <div class="side-group" data-group="main">
-        <button class="group-header" type="button">
-          <span>MAIN</span>
-          <span class="chev">▾</span>
-        </button>
-        <div class="group-body">
-          <button class="nav-item active" data-page="dashboard" type="button">🏠 <span class="label">Dashboard</span></button>
-          <button class="nav-item" data-page="categories" type="button">🗂️ <span class="label">Categories</span></button>
+      <nav class="sidebar-nav" aria-label="Sections">
+        <div class="side-group" data-group="main">
+          <button class="group-header" type="button">
+            <span>MAIN</span>
+            <span class="chev" aria-hidden="true">▾</span>
+          </button>
+          <div class="group-body">
+            <button
+              class="nav-item active"
+              data-page="dashboard"
+              type="button"
+              aria-label="Dashboard"
+            >
+              <span aria-hidden="true">🏠</span>
+              <span class="label">Dashboard</span>
+            </button>
+            <button
+              class="nav-item"
+              data-page="categories"
+              type="button"
+              aria-label="Categories"
+            >
+              <span aria-hidden="true">🗂️</span>
+              <span class="label">Categories</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <!-- NEW: DOWNLOADS SECTION -->
-      <div class="side-group" data-group="downloads">
-        <button class="group-header" type="button">
-          <span>DOWNLOADS</span>
-          <span class="chev">▾</span>
-        </button>
-        <div class="group-body">
-          <button class="nav-item" data-page="downloads" type="button">⬇️ <span class="label">Downloads</span></button>
+        <div class="side-group" data-group="downloads">
+          <button class="group-header" type="button">
+            <span>DOWNLOADS</span>
+            <span class="chev" aria-hidden="true">▾</span>
+          </button>
+          <div class="group-body">
+            <button
+              class="nav-item"
+              data-page="downloads"
+              type="button"
+              aria-label="Downloads"
+            >
+              <span aria-hidden="true">⬇️</span>
+              <span class="label">Downloads</span>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="side-group" data-group="system">
-        <button class="group-header" type="button">
-          <span>SYSTEM</span>
-          <span class="chev">▾</span>
-        </button>
-        <div class="group-body">
-          <button class="nav-item" data-page="settings" type="button">⚙️ <span class="label">Settings</span></button>
+        <div class="side-group" data-group="system">
+          <button class="group-header" type="button">
+            <span>SYSTEM</span>
+            <span class="chev" aria-hidden="true">▾</span>
+          </button>
+          <div class="group-body">
+            <button
+              class="nav-item"
+              data-page="settings"
+              type="button"
+              aria-label="Settings"
+            >
+              <span aria-hidden="true">⚙️</span>
+              <span class="label">Settings</span>
+            </button>
+          </div>
         </div>
-      </div>
+      </nav>
 
       <div class="sidebar-footer">
-        <button id="themeToggle" class="theme-btn" type="button" title="Toggle theme">
-          <span id="themeIcon">🌙</span>
+        <button
+          id="themeToggle"
+          class="theme-btn"
+          type="button"
+          title="Toggle theme"
+          aria-label="Toggle dark or light theme"
+        >
+          <span id="themeIcon" aria-hidden="true">🌙</span>
           <span id="themeText" class="label">Dark</span>
         </button>
       </div>
     </aside>
 
     <!-- MAIN -->
-    <main class="main">
+    <main class="main" role="main">
       <header class="topbar">
-        <div class="page-title" id="pageTitle">Dashboard</div>
+        <div class="topbar-left">
+          <button
+            id="sidebarToggle"
+            class="btn icon-btn"
+            type="button"
+            aria-label="Toggle sidebar"
+          >
+            ☰
+          </button>
+          <div class="page-title" id="pageTitle">Dashboard</div>
+        </div>
 
-        <!-- Only visible on Dashboard -->
         <div class="top-actions" id="dashboardTools">
           <div class="search">
-            <span class="search-icon">⌕</span>
-            <input id="searchInput" type="text" placeholder="Search links..." autocomplete="off" />
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <label class="sr-only" for="searchInput">Search links</label>
+            <input
+              id="searchInput"
+              type="text"
+              placeholder="Search links..."
+              autocomplete="off"
+            />
           </div>
+
+          <select id="sortSelect" class="input" style="min-width: 160px;">
+            <option value="name">Sort: A–Z</option>
+            <option value="clicks">Sort: Most used</option>
+            <option value="recent">Sort: Recently opened</option>
+          </select>
         </div>
       </header>
 
       <section class="pages">
         <!-- DASHBOARD -->
-        <section class="page show" id="page-dashboard">
+        <section class="page show" id="page-dashboard" aria-label="Dashboard">
+          <div class="row" id="tagFilterRow">
+            <span class="tiny">Filter by tag:</span>
+            <div id="tagFilterChips" class="tag-chips"></div>
+          </div>
+
           <div id="favSection" class="section hidden">
             <div class="section-title">⭐ Favourites</div>
             <div class="grid" id="favGrid"></div>
@@ -101,31 +204,48 @@
             <div class="grid" id="linkGrid"></div>
           </div>
 
-          <p class="hint">Tip: use search to filter. Click ⭐ to pin. Order links in Categories with drag & drop.</p>
+          <p class="hint">
+            Tip: use search to filter. Click ⭐ to pin. Order links in Categories with drag &amp; drop.
+            Use <kbd>Ctrl+K</kbd> to focus search, <kbd>Ctrl+P</kbd> for command palette.
+          </p>
         </section>
 
         <!-- CATEGORIES -->
-        <section class="page" id="page-categories">
+        <section class="page" id="page-categories" aria-label="Categories">
           <div class="row">
             <div class="subtitle">Categories</div>
             <div class="row-actions">
-              <button id="addCategoryBtn" class="btn" type="button">➕ Add Category</button>
-              <button id="expandAllBtn" class="btn" type="button">Expand all</button>
-              <button id="collapseAllBtn" class="btn" type="button">Collapse all</button>
+              <button id="addCategoryBtn" class="btn" type="button">
+                ➕ Add Category
+              </button>
+              <button id="expandAllBtn" class="btn" type="button">
+                Expand all
+              </button>
+              <button id="collapseAllBtn" class="btn" type="button">
+                Collapse all
+              </button>
+              <button id="undoBtn" class="btn" type="button">
+                ⬅️ Undo
+              </button>
+              <button id="redoBtn" class="btn" type="button">
+                ➡️ Redo
+              </button>
             </div>
           </div>
 
           <div class="row">
             <input id="quickName" class="input" placeholder="Quick add: name" />
             <input id="quickUrl" class="input" placeholder="Quick add: https://..." />
-            <span class="tiny">Use “+ Link” inside a category to add properly.</span>
+            <span class="tiny">
+              Use “+ Link” inside a category to add properly.
+            </span>
           </div>
 
           <div class="accordion" id="categoriesWrap"></div>
         </section>
 
-        <!-- NEW: DOWNLOADS PAGE -->
-        <section class="page" id="page-downloads">
+        <!-- DOWNLOADS -->
+        <section class="page" id="page-downloads" aria-label="Downloads">
           <div class="subtitle">Downloads</div>
 
           <div class="section">
@@ -136,34 +256,85 @@
           <div class="section">
             <div class="section-title">🛡️ VPN downloads</div>
             <div class="grid" id="downloadsVpnsGrid"></div>
-            <p class="hint">Use official sites only. Some VPNs require an account or paid plan.</p>
+            <p class="hint">
+              Use official sites only. Some VPNs require an account or paid plan.
+            </p>
           </div>
         </section>
 
         <!-- SETTINGS -->
-        <section class="page" id="page-settings">
+        <section class="page" id="page-settings" aria-label="Settings">
           <div class="subtitle">Settings</div>
 
           <div class="panel">
             <div class="panel-title">Data</div>
-            <div class="panel-text">Export your links as a file or import them back later.</div>
+            <div class="panel-text">
+              Export your links as a file or import them back later.
+            </div>
 
             <div class="row">
-              <button id="exportBtn" class="btn primary" type="button">Export JSON</button>
-              <button id="importBtn" class="btn" type="button">Import JSON</button>
-              <input id="importFile" type="file" accept="application/json" class="hidden" />
-              <button id="resetDataBtn" class="btn danger" type="button">Reset to defaults</button>
+              <button id="exportBtn" class="btn primary" type="button">
+                Export JSON
+              </button>
+              <button id="importBtn" class="btn" type="button">
+                Import JSON
+              </button>
+              <input
+                id="importFile"
+                type="file"
+                accept="application/json"
+                class="hidden"
+              />
+              <button id="resetDataBtn" class="btn danger" type="button">
+                Reset to defaults
+              </button>
             </div>
           </div>
 
           <div class="panel">
             <div class="panel-title">Security</div>
-            <div class="panel-text">Basic lock screen (client-side). Good for privacy, not strong security.</div>
+            <div class="panel-text">
+              Basic lock screen (client-side). Good for privacy, not strong security.
+            </div>
 
             <div class="row">
-              <button id="setPasswordBtn" class="btn" type="button">Set / Change password</button>
-              <button id="removePasswordBtn" class="btn" type="button">Remove password</button>
-              <button id="lockNowBtn" class="btn danger" type="button">Lock now</button>
+              <button id="setPasswordBtn" class="btn" type="button">
+                Set / Change password
+              </button>
+              <button id="removePasswordBtn" class="btn" type="button">
+                Remove password
+              </button>
+              <button id="lockNowBtn" class="btn danger" type="button">
+                Lock now
+              </button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Theme</div>
+            <div class="panel-text">
+              Choose your accent color. This affects buttons, highlights, and cards.
+            </div>
+
+            <div class="row">
+              <label class="tiny" for="accentColorInput">Accent color</label>
+              <input id="accentColorInput" type="color" value="#4f46e5" />
+              <button id="accentResetBtn" class="btn" type="button">Reset</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-title">Shortcuts</div>
+            <div class="panel-text">
+              <ul class="shortcut-list">
+                <li><kbd>Ctrl+K</kbd> – Focus search</li>
+                <li><kbd>Ctrl+P</kbd> – Command palette</li>
+                <li><kbd>G</kbd> then <kbd>D</kbd> – Go to Dashboard</li>
+                <li><kbd>G</kbd> then <kbd>C</kbd> – Go to Categories</li>
+                <li><kbd>Ctrl+L</kbd> – Lock screen (if password set)</li>
+                <li><kbd>Ctrl+Z</kbd> – Undo (Categories)</li>
+                <li><kbd>Ctrl+Y</kbd> – Redo (Categories)</li>
+              </ul>
             </div>
           </div>
 
@@ -178,6 +349,6 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js" defer></script>
 </body>
 </html>
