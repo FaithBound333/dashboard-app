@@ -2530,3 +2530,901 @@ function openCommandPalette() {
   // Re-render once to apply
   renderDashboard();
 })();
+// ======================================================
+// DASHBOARD EXPANSION PACK (Piece 1/3 - Core features)
+// Paste this at the VERY BOTTOM of app.js, above Piece 2 & 3
+// ======================================================
+
+// Small helper
+function $(sel) {
+  return document.querySelector(sel);
+}
+
+// ======================================================
+// 1) CLICK TRACKING (clicks + lastOpened)
+// ======================================================
+(function setupClickTracking() {
+  const dash = document.getElementById("page-dashboard");
+  if (!dash) return;
+
+  dash.addEventListener("click", (e) => {
+    const card = e.target.closest("a.card");
+    if (!card) return;
+    const href = card.getAttribute("href");
+    if (!href) return;
+
+    const nu = normalizeUrl(href);
+    let found = null;
+
+    for (const cat of data.categories) {
+      for (const link of cat.links) {
+        if (normalizeUrl(link.url) === nu) {
+          found = link;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    if (found) {
+      found.clicks = (found.clicks || 0) + 1;
+      found.lastOpened = Date.now();
+      saveData();
+      renderDashboard();
+    }
+  });
+})();
+
+// ======================================================
+// 2) ANALYTICS MODAL + BUTTON IN TOPBAR
+// ======================================================
+(function setupAnalytics() {
+  const tools = document.getElementById("dashboardTools");
+  if (!tools) return;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn";
+  btn.textContent = "📊 Analytics";
+  btn.title = "View link analytics";
+  tools.appendChild(btn);
+
+  btn.addEventListener("click", () => {
+    const items = allLinks();
+    if (items.length === 0) {
+      openModal({
+        title: "📊 Analytics",
+        body: "No links found.",
+        inputs: [],
+        okText: "Close",
+        cancelText: "Close",
+      });
+      return;
+    }
+
+    const sorted = [...items].sort(
+      (a, b) => (b.link.clicks || 0) - (a.link.clicks || 0)
+    );
+    const top = sorted.slice(0, 15);
+
+    const lines = top.map((item, i) => {
+      const c = item.link.clicks || 0;
+      const last = item.link.lastOpened
+        ? new Date(item.link.lastOpened).toLocaleString()
+        : "never";
+      return `${i + 1}. ${item.link.name} (${item.catName}) – ${c} click${
+        c === 1 ? "" : "s"
+      }, last: ${last}`;
+    });
+
+    openModal({
+      title: "📊 Top links",
+      body:
+        lines.length === 0
+          ? "No clicks tracked yet. Open some links first."
+          : lines.join("\n"),
+      inputs: [],
+      okText: "Close",
+      cancelText: "Close",
+    });
+  });
+})();
+
+// ======================================================
+// 3) QUICK LAUNCH BAR (TOP 5 MOST USED)
+// ======================================================
+(function setupQuickLaunch() {
+  const dash = document.getElementById("page-dashboard");
+  if (!dash) return;
+
+  const bar = document.createElement("div");
+  bar.className = "quick-launch";
+  bar.innerHTML = `
+    <div class="quick-launch-title tiny">Quick launch (top 5)</div>
+    <div class="quick-launch-row" id="quickLaunchRow"></div>
+  `;
+  dash.insertBefore(bar, dash.firstChild);
+
+  function renderQuickLaunch() {
+    const row = document.getElementById("quickLaunchRow");
+    if (!row) return;
+
+    const items = allLinks()
+      .filter((i) => (i.link.clicks || 0) > 0)
+      .sort((a, b) => (b.link.clicks || 0) - (a.link.clicks || 0))
+      .slice(0, 5);
+
+    if (items.length === 0) {
+      row.innerHTML =
+        '<span class="tiny">No usage yet. Open some links and they’ll appear here.</span>';
+      return;
+    }
+
+    row.innerHTML = items
+      .map((item) => {
+        const iconSrc = faviconUrl(item.link.url);
+        return `
+          <a
+            href="${escapeHtml(item.link.url)}"
+            class="quick-launch-item"
+            target="_blank"
+            rel="noreferrer"
+          >
+            ${
+              iconSrc
+                ? `<img src="${escapeHtml(iconSrc)}" alt="" loading="lazy" />`
+                : `<span class="quick-launch-emoji">${escapeHtml(
+                    item.catIcon || "🔗"
+                  )}</span>`
+            }
+            <span class="quick-launch-name">${escapeHtml(item.link.name)}</span>
+          </a>
+        `;
+      })
+      .join("");
+  }
+
+  const _origRenderDashboard = renderDashboard;
+  renderDashboard = function () {
+    _origRenderDashboard();
+    renderQuickLaunch();
+  };
+
+  renderQuickLaunch();
+})();
+
+// ======================================================
+// 4) KEYBOARD SHORTCUTS + COMMAND PALETTE
+// ======================================================
+function openCommandPalette() {
+  const commands = [
+    { id: "goto_dashboard", label: "Go to Dashboard" },
+    { id: "goto_categories", label: "Go to Categories" },
+    { id: "goto_downloads", label: "Go to Downloads" },
+    { id: "goto_settings", label: "Go to Settings" },
+    { id: "lock", label: "Lock screen" },
+    { id: "export", label: "Export JSON" },
+    { id: "import", label: "Import JSON" },
+    { id: "toggle_theme", label: "Toggle dark/light theme" },
+  ];
+
+  openModal({
+    title: "⌕ Command palette",
+    body:
+      "Type part of a command (e.g. 'dash', 'cat', 'lock', 'export'). Matching is fuzzy.",
+    inputs: [
+      {
+        label: "Command",
+        type: "text",
+        value: "",
+        placeholder: "dashboard, categories, lock, export, settings...",
+      },
+    ],
+    okText: "Run",
+    cancelText: "Cancel",
+  }).then((res) => {
+    if (!res.ok) return;
+    const q = (res.values[0] || "").toLowerCase().trim();
+    if (!q) return;
+
+    const match =
+      commands.find((c) => c.label.toLowerCase().includes(q)) || null;
+
+    if (!match) {
+      showToast("No matching command");
+      return;
+    }
+
+    switch (match.id) {
+      case "goto_dashboard":
+        showPage("dashboard");
+        break;
+      case "goto_categories":
+        showPage("categories");
+        break;
+      case "goto_downloads":
+        showPage("downloads");
+        break;
+      case "goto_settings":
+        showPage("settings");
+        break;
+      case "lock":
+        if (hasPassword()) showLock();
+        else showToast("No password set");
+        break;
+      case "export":
+        document.getElementById("exportBtn")?.click();
+        break;
+      case "import":
+        document.getElementById("importBtn")?.click();
+        break;
+      case "toggle_theme":
+        document.getElementById("themeToggle")?.click();
+        break;
+    }
+  });
+}
+
+(function setupKeyboardShortcuts() {
+  let lastGTime = 0;
+
+  document.addEventListener("keydown", (e) => {
+    const isInput =
+      e.target.tagName === "INPUT" ||
+      e.target.tagName === "TEXTAREA" ||
+      e.target.isContentEditable;
+
+    // Ctrl+K – focus search
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      const inp = document.getElementById("searchInput");
+      if (inp) inp.focus();
+      return;
+    }
+
+    // Ctrl+P – command palette
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
+      e.preventDefault();
+      openCommandPalette();
+      return;
+    }
+
+    // Ctrl+L – lock (if password set)
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "l") {
+      if (hasPassword()) {
+        e.preventDefault();
+        showLock();
+      }
+      return;
+    }
+
+    // Ctrl+Z / Ctrl+Y – undo/redo
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "z") {
+      e.preventDefault();
+      undo();
+      return;
+    }
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "y") {
+      e.preventDefault();
+      redo();
+      return;
+    }
+
+    if (isInput) return;
+
+    // G then D / C – go to Dashboard / Categories
+    const now = Date.now();
+    if (e.key.toLowerCase() === "g") {
+      lastGTime = now;
+      return;
+    }
+    if (now - lastGTime < 800) {
+      if (e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        showPage("dashboard");
+        lastGTime = 0;
+        return;
+      }
+      if (e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        showPage("categories");
+        lastGTime = 0;
+        return;
+      }
+    }
+  });
+})();
+// ======================================================
+// DASHBOARD EXPANSION PACK (Piece 2/3)
+// Paste this DIRECTLY under Piece 1
+// ======================================================
+
+// ======================================================
+// 5) AUTO‑TAGGING BASED ON URL
+// ======================================================
+(function setupAutoTagging() {
+  function autoTagLink(link) {
+    const url = String(link.url || "").toLowerCase();
+    const tags = new Set(link.tags || []);
+
+    if (url.includes("youtube") || url.includes("twitch")) tags.add("video");
+    if (url.includes("spotify") || url.includes("soundcloud")) tags.add("music");
+    if (url.includes("discord")) tags.add("chat");
+    if (url.includes("github")) tags.add("dev");
+    if (url.includes("docs") || url.includes("developer.mozilla")) tags.add("docs");
+    if (url.includes("game") || url.includes("steam") || url.includes("itch.io"))
+      tags.add("games");
+    if (url.includes("mail") || url.includes("gmail") || url.includes("outlook"))
+      tags.add("email");
+
+    link.tags = Array.from(tags);
+  }
+
+  function autoTagAll() {
+    for (const cat of data.categories) {
+      for (const link of cat.links) {
+        autoTagLink(link);
+      }
+    }
+  }
+
+  autoTagAll();
+
+  const _origSaveData = saveData;
+  saveData = function () {
+    autoTagAll();
+    _origSaveData();
+  };
+})();
+
+// ======================================================
+// 6) NOTES EDITOR (RIGHT‑CLICK CARD TO EDIT NOTE)
+// ======================================================
+(function setupNotesEditor() {
+  const dash = document.getElementById("page-dashboard");
+  if (!dash) return;
+
+  dash.addEventListener("contextmenu", (e) => {
+    const card = e.target.closest("a.card");
+    if (!card) return;
+    e.preventDefault();
+
+    const href = card.getAttribute("href");
+    if (!href) return;
+
+    const nu = normalizeUrl(href);
+    let found = null;
+
+    for (const cat of data.categories) {
+      for (const link of cat.links) {
+        if (normalizeUrl(link.url) === nu) {
+          found = link;
+          break;
+        }
+      }
+      if (found) break;
+    }
+
+    if (!found) return;
+
+    openModal({
+      title: `📝 Note for "${found.name}"`,
+      body: "Add a short note. It will show under the card meta.",
+      inputs: [
+        {
+          label: "Note",
+          type: "text",
+          value: found.note || "",
+          placeholder: "e.g. school login, work, favourite playlist...",
+        },
+      ],
+      okText: "Save",
+      cancelText: "Cancel",
+    }).then((res) => {
+      if (!res.ok) return;
+      found.note = res.values[0] || "";
+      saveData();
+      renderDashboard();
+    });
+  });
+})();
+
+// ======================================================
+// 7) BACKGROUND SYSTEM (DAILY GRADIENT + CUSTOM UPLOAD)
+// ======================================================
+(function setupBackgrounds() {
+  const bgEl = document.querySelector(".bg");
+  if (!bgEl) return;
+
+  function applyDailyGradient() {
+    const day = new Date().getDate();
+    const gradients = [
+      "radial-gradient(circle at 0% 0%, #4f46e5 0, transparent 60%), radial-gradient(circle at 100% 0%, #06b6d4 0, transparent 60%), linear-gradient(180deg, #0f172a, #020617)",
+      "radial-gradient(circle at 0% 0%, #ec4899 0, transparent 60%), radial-gradient(circle at 100% 0%, #22c55e 0, transparent 60%), linear-gradient(180deg, #0f172a, #020617)",
+      "radial-gradient(circle at 0% 0%, #f97316 0, transparent 60%), radial-gradient(circle at 100% 0%, #3b82f6 0, transparent 60%), linear-gradient(180deg, #0f172a, #020617)",
+      "radial-gradient(circle at 0% 0%, #a855f7 0, transparent 60%), radial-gradient(circle at 100% 0%, #22d3ee 0, transparent 60%), linear-gradient(180deg, #0f172a, #020617)",
+    ];
+    const g = gradients[day % gradients.length];
+    bgEl.style.backgroundImage = g;
+    bgEl.style.backgroundSize = "cover";
+    bgEl.style.backgroundPosition = "center";
+    bgEl.style.opacity = 1;
+    bgEl.style.filter = "none";
+  }
+
+  function applyCustomBackground() {
+    if (!settings.bgImage) {
+      applyDailyGradient();
+      return;
+    }
+    bgEl.style.backgroundImage = `url(${settings.bgImage})`;
+    bgEl.style.backgroundSize = "cover";
+    bgEl.style.backgroundPosition = "center";
+    bgEl.style.opacity = settings.bgOpacity ?? 0.9;
+    bgEl.style.filter = `blur(${settings.bgBlur || 0}px)`;
+  }
+
+  if (settings.bgImage) applyCustomBackground();
+  else applyDailyGradient();
+
+  const settingsPage = document.getElementById("page-settings");
+  if (!settingsPage) return;
+
+  const panel = document.createElement("div");
+  panel.className = "panel";
+  panel.innerHTML = `
+    <div class="panel-title">Background</div>
+    <div class="panel-text">Daily gradient wallpaper, or upload your own background image.</div>
+    <div class="row">
+      <button type="button" class="btn" id="bgUseDailyBtn">Use daily gradient</button>
+      <button type="button" class="btn" id="bgUploadBtn">Upload image</button>
+      <input type="file" id="bgFileInput" accept="image/*" class="hidden" />
+    </div>
+    <div class="row">
+      <label class="tiny" for="bgBlurRange">Blur</label>
+      <input id="bgBlurRange" type="range" min="0" max="20" value="${settings.bgBlur || 0}" />
+      <label class="tiny" for="bgOpacityRange">Opacity</label>
+      <input id="bgOpacityRange" type="range" min="30" max="100" value="${(settings.bgOpacity || 0.9) * 100}" />
+    </div>
+  `;
+  settingsPage.appendChild(panel);
+
+  const bgUseDailyBtn = document.getElementById("bgUseDailyBtn");
+  const bgUploadBtn = document.getElementById("bgUploadBtn");
+  const bgFileInput = document.getElementById("bgFileInput");
+  const bgBlurRange = document.getElementById("bgBlurRange");
+  const bgOpacityRange = document.getElementById("bgOpacityRange");
+
+  bgUseDailyBtn?.addEventListener("click", () => {
+    delete settings.bgImage;
+    delete settings.bgBlur;
+    delete settings.bgOpacity;
+    saveSettings(settings);
+    applyDailyGradient();
+    showToast("Using daily gradient");
+  });
+
+  bgUploadBtn?.addEventListener("click", () => bgFileInput?.click());
+
+  bgFileInput?.addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      settings.bgImage = reader.result;
+      saveSettings(settings);
+      applyCustomBackground();
+      showToast("Background updated");
+    };
+    reader.readAsDataURL(file);
+  });
+
+  bgBlurRange?.addEventListener("input", (e) => {
+    settings.bgBlur = Number(e.target.value || 0);
+    saveSettings(settings);
+    applyCustomBackground();
+  });
+
+  bgOpacityRange?.addEventListener("input", (e) => {
+    settings.bgOpacity = Number(e.target.value || 90) / 100;
+    saveSettings(settings);
+    applyCustomBackground();
+  });
+})();
+
+// ======================================================
+// 8) CLIPBOARD SYNC (COPY/PASTE JSON)
+// ======================================================
+(function setupClipboardSync() {
+  const settingsPage = document.getElementById("page-settings");
+  if (!settingsPage) return;
+
+  const dataPanel = document.querySelector("#page-settings .panel");
+  if (!dataPanel) return;
+
+  const row = dataPanel.querySelector(".row");
+  if (!row) return;
+
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "btn";
+  copyBtn.textContent = "Copy JSON to clipboard";
+
+  const pasteBtn = document.createElement("button");
+  pasteBtn.type = "button";
+  pasteBtn.className = "btn";
+  pasteBtn.textContent = "Paste JSON from clipboard";
+
+  row.appendChild(copyBtn);
+  row.appendChild(pasteBtn);
+
+  copyBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+      showToast("Copied JSON to clipboard");
+    } catch {
+      showToast("Clipboard not available");
+    }
+  });
+
+  pasteBtn.addEventListener("click", async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      const parsed = JSON.parse(text);
+      data = migrateAndFix(parsed);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      renderCategories();
+      renderDashboard();
+      renderTagFilters();
+      showToast("Imported from clipboard JSON");
+    } catch {
+      showToast("Failed to import from clipboard");
+    }
+  });
+})();
+// ======================================================
+// DASHBOARD EXPANSION PACK (Piece 3/3)
+// Paste this DIRECTLY under Piece 2
+// ======================================================
+
+// ======================================================
+// 9) EMOJI ICON PICKER FOR CATEGORIES
+// ======================================================
+(function setupEmojiPicker() {
+  const categoriesWrap = document.getElementById("categoriesWrap");
+  if (!categoriesWrap) return;
+
+  const EMOJIS =
+    "📁 🌐 🎮 🧰 💬 📚 🎬 🎧 📝 🧱 🛡️ ⚙️ ⭐ 🔗 💻 🖥️ 📱 🎯 🚀 🧪 🧠 🧮 🧾 🕹️ 🎲 🎵 🎶 🎤 🎧 🎼 🎹 🎻 🎺 🎷 🥁 🎬 📺 📻 📰".split(
+      " "
+    );
+
+  categoriesWrap.addEventListener("click", (e) => {
+    const btn = e.target.closest('button[data-action="setIcon"]');
+    if (!btn) return;
+
+    const catId = btn.getAttribute("data-catid");
+    const cat = findCategoryById(catId);
+    if (!cat) return;
+
+    openEmojiPicker(cat);
+  });
+
+  function openEmojiPicker(cat) {
+    const body = EMOJIS.map((e, i) =>
+      ((i + 1) % 12 === 0 ? e + "\n" : e + " ")
+    ).join("");
+
+    openModal({
+      title: `Choose icon for "${cat.name}"`,
+      body:
+        body +
+        "\n\nType a single emoji below, or paste one. You can also pick from above.",
+      inputs: [
+        {
+          label: "Emoji",
+          type: "text",
+          value: cat.icon || "📁",
+          placeholder: "e.g. 🎮",
+        },
+      ],
+      okText: "Save",
+      cancelText: "Cancel",
+    }).then((res) => {
+      if (!res.ok) return;
+      const val = (res.values[0] || "").trim();
+      if (!val) return;
+      cat.icon = val[0];
+      saveData();
+      renderCategories();
+      renderDashboard();
+    });
+  }
+})();
+
+// ======================================================
+// 10) CUSTOM CARD THEMES (YOUTUBE, DISCORD, GITHUB, SPOTIFY)
+// ======================================================
+(function setupCardThemes() {
+  const domainThemeMap = {
+    "youtube.com": "card-theme-youtube",
+    "youtu.be": "card-theme-youtube",
+    "discord.com": "card-theme-discord",
+    "discord.gg": "card-theme-discord",
+    "github.com": "card-theme-github",
+    "spotify.com": "card-theme-spotify",
+    "open.spotify.com": "card-theme-spotify",
+  };
+
+  function getThemeClassForUrl(url) {
+    try {
+      const u = new URL(url);
+      const host = u.hostname.replace("www.", "").toLowerCase();
+      return domainThemeMap[host] || "";
+    } catch {
+      return "";
+    }
+  }
+
+  const _origRenderCard = renderCard;
+
+  renderCard = function (item) {
+    const html = _origRenderCard(item);
+    const themeClass = getThemeClassForUrl(item.link.url);
+    if (!themeClass) return html;
+
+    return html.replace(
+      'class="card"',
+      `class="card ${themeClass}"`
+    );
+  };
+
+  renderDashboard();
+})();
+
+// ======================================================
+// 11) UNKNOWN & UNDERRATED WEB EXPANSION PACK (50+ LINKS)
+// ======================================================
+(function setupUnknownWebExpansion() {
+  const byName = (name) => String(name || "").trim().toLowerCase();
+
+  function ensureCategory(name, icon, color) {
+    let cat = data.categories.find((c) => byName(c.name) === byName(name));
+    if (!cat) {
+      cat = {
+        id: makeId(),
+        name,
+        icon,
+        color,
+        links: [],
+      };
+      data.categories.push(cat);
+    }
+    return cat;
+  }
+
+  const packs = [
+    {
+      name: "Indie Games",
+      icon: "🎮",
+      color: "#22c55e",
+      links: [
+        { name: "Neal.fun", url: "https://neal.fun", tags: ["games"], note: "Interactive web toys." },
+        { name: "Little Alchemy 2", url: "https://littlealchemy2.com", tags: ["puzzle"] },
+        { name: "Line Rider", url: "https://www.linerider.com", tags: ["physics"] },
+        { name: "Quick, Draw!", url: "https://quickdraw.withgoogle.com", tags: ["ai"] },
+        { name: "A Dark Room", url: "https://adarkroom.doublespeakgames.com", tags: ["text"] },
+        { name: "Hextris", url: "https://hextris.io", tags: ["arcade"] },
+        { name: "2048", url: "https://play2048.co", tags: ["puzzle"] },
+        { name: "Slope Game", url: "https://y8.com/games/slope", tags: ["arcade"] },
+      ],
+    },
+    {
+      name: "Creative Tools",
+      icon: "🎨",
+      color: "#f97316",
+      links: [
+        { name: "Silk", url: "https://weavesilk.com", tags: ["art"] },
+        { name: "Patatap", url: "https://patatap.com", tags: ["music"] },
+        { name: "Inspirograph", url: "https://nathanfriend.io/inspirograph", tags: ["drawing"] },
+        { name: "Typedrummer", url: "https://typedrummer.com", tags: ["music"] },
+        { name: "Tixy.land", url: "https://tixy.land", tags: ["code"] },
+        { name: "This Is Sand", url: "https://thisissand.com", tags: ["relax"] },
+        { name: "Pixilart", url: "https://www.pixilart.com/draw", tags: ["pixel"] },
+      ],
+    },
+    {
+      name: "Science & Simulators",
+      icon: "🧪",
+      color: "#22d3ee",
+      links: [
+        { name: "PhET Simulations", url: "https://phet.colorado.edu/en/simulations/category/html", tags: ["science"] },
+        { name: "Stellarium Web", url: "https://stellarium-web.org", tags: ["space"] },
+        { name: "NASA Eyes", url: "https://eyes.nasa.gov", tags: ["space"] },
+        { name: "Falstad Circuit Simulator", url: "https://www.falstad.com/circuit", tags: ["electronics"] },
+        { name: "MyPhysicsLab", url: "https://www.myphysicslab.com", tags: ["physics"] },
+        { name: "GeoGebra Classic", url: "https://www.geogebra.org/classic", tags: ["math"] },
+      ],
+    },
+    {
+      name: "Niche Communities",
+      icon: "💬",
+      color: "#ec4899",
+      links: [
+        { name: "SpaceHey", url: "https://spacehey.com", tags: ["social"] },
+        { name: "Replit", url: "https://replit.com", tags: ["code"] },
+        { name: "Scratch", url: "https://scratch.mit.edu", tags: ["code"] },
+        { name: "Dev.to", url: "https://dev.to", tags: ["dev"] },
+        { name: "CodePen", url: "https://codepen.io", tags: ["code"] },
+      ],
+    },
+    {
+      name: "Weird Web",
+      icon: "🌀",
+      color: "#a855f7",
+      links: [
+        { name: "Pointer Pointer", url: "https://pointerpointer.com", tags: ["weird"] },
+        { name: "The Useless Web", url: "https://theuselessweb.com", tags: ["random"] },
+        { name: "Zoomquilt", url: "https://zoomquilt.org", tags: ["trippy"] },
+        { name: "Sandspiel", url: "https://sandspiel.club", tags: ["sandbox"] },
+        { name: "Staggering Beauty", url: "http://www.staggeringbeauty.com", tags: ["weird"] },
+      ],
+    },
+    {
+      name: "Learning Tools",
+      icon: "📚",
+      color: "#0ea5e9",
+      links: [
+        { name: "Khan Academy Programming", url: "https://www.khanacademy.org/computing/computer-programming", tags: ["code"] },
+        { name: "Exercism", url: "https://exercism.org", tags: ["code"] },
+        { name: "Brilliant", url: "https://brilliant.org", tags: ["math"] },
+        { name: "Duolingo", url: "https://www.duolingo.com", tags: ["language"] },
+        { name: "GeoGuessr", url: "https://www.geoguessr.com", tags: ["geography"] },
+      ],
+    },
+    {
+      name: "Web Utilities",
+      icon: "🧰",
+      color: "#64748b",
+      links: [
+        { name: "Wayback Machine", url: "https://web.archive.org", tags: ["archive"] },
+        { name: "httpbin", url: "https://httpbin.org", tags: ["dev"] },
+        { name: "ReqBin", url: "https://reqbin.com", tags: ["dev"] },
+        { name: "JSON Formatter", url: "https://jsonformatter.org", tags: ["dev"] },
+        { name: "Regex101", url: "https://regex101.com", tags: ["dev"] },
+      ],
+    },
+  ];
+
+  for (const pack of packs) {
+    const cat = ensureCategory(pack.name, pack.icon, pack.color);
+    const existingUrls = new Set(cat.links.map((l) => normalizeUrl(l.url)));
+
+    for (const link of pack.links) {
+      const nu = normalizeUrl(link.url);
+      if (existingUrls.has(nu)) continue;
+
+      cat.links.push({
+        id: makeId(),
+        name: link.name,
+        url: nu,
+        favourite: false,
+        tags: link.tags || [],
+        note: link.note || "",
+      });
+    }
+  }
+
+  saveData();
+  renderCategories();
+  renderDashboard();
+  renderTagFilters();
+})();
+// =========================================================
+// PROFESSIONAL ANIMATION ENGINE
+// Re-triggers animations on re-render + dynamic card entry
+// =========================================================
+
+(function enableProAnimations() {
+  if (typeof renderDashboard !== "function") return;
+
+  const originalRender = renderDashboard;
+
+  renderDashboard = function () {
+    originalRender();
+
+    // Restart animations on cards
+    const cards = document.querySelectorAll(".card");
+    cards.forEach((card, i) => {
+      card.style.animation = "none";
+      void card.offsetHeight; // reflow
+      card.style.animation = `cardEnter 0.6s cubic-bezier(0.22,1,0.36,1) forwards`;
+      card.style.animationDelay = `${i * 0.04}s`; // stagger effect
+    });
+
+    // Restart animations on category titles
+    const titles = document.querySelectorAll(".category-title");
+    titles.forEach((title, i) => {
+      title.style.animation = "none";
+      void title.offsetHeight;
+      title.style.animation = `titleReveal 0.5s cubic-bezier(0.22,1,0.36,1) forwards`;
+      title.style.animationDelay = `${i * 0.06}s`;
+    });
+  };
+})();
+
+// Optional helper for adding new cards dynamically
+function animateNewCard(cardElement) {
+  if (!cardElement) return;
+  cardElement.style.opacity = "0";
+  cardElement.style.transform = "translateY(20px) scale(0.98)";
+  setTimeout(() => {
+    cardElement.style.transition = "all 0.6s cubic-bezier(0.22,1,0.36,1)";
+    cardElement.style.opacity = "1";
+    cardElement.style.transform = "translateY(0) scale(1)";
+  }, 10);
+}
+// =========================================================
+// CURSOR-REACTIVE 3D TILT ENGINE
+// Makes cards tilt and glow based on mouse position
+// =========================================================
+
+(function enableCursorTilt() {
+  const cards = document.querySelectorAll(".card");
+
+  cards.forEach(card => {
+    card.addEventListener("mousemove", (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      // Normalized values (-1 to 1)
+      const nx = (x / rect.width) * 2 - 1;
+      const ny = (y / rect.height) * 2 - 1;
+
+      // Tilt strength
+      const tiltX = ny * 8;   // rotateX
+      const tiltY = nx * -8;  // rotateY
+
+      card.style.transform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.03)`;
+
+      // Pass mouse position to CSS glow
+      card.style.setProperty("--mx", `${x}px`);
+      card.style.setProperty("--my", `${y}px`);
+    });
+
+    card.addEventListener("mouseleave", () => {
+      card.style.transform = "rotateX(0deg) rotateY(0deg) scale(1)";
+    });
+  });
+})();
+// =========================================================
+// FIXED CURSOR-REACTIVE 3D ENGINE (NO STYLE OVERRIDES)
+// =========================================================
+
+(function enableCardTilt() {
+  const cards = document.querySelectorAll(".card");
+
+  cards.forEach(card => {
+    card.addEventListener("mousemove", (e) => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const nx = (x / rect.width) * 2 - 1;
+      const ny = (y / rect.height) * 2 - 1;
+
+      const tiltX = ny * 8;
+      const tiltY = nx * -8;
+
+      card.style.transform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.03)`;
+
+      card.style.setProperty("--mx", `${x}px`);
+      card.style.setProperty("--my", `${y}px`);
+    });
+
+    card.addEventListener("mouseleave", () => {
+      card.style.transform = "rotateX(0deg) rotateY(0deg) scale(1)";
+    });
+  });
+})();
